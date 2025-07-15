@@ -82,8 +82,8 @@ class UsersController extends AppController
     public function add()
     {
         $user = $this->Users->newEmptyEntity();
-        if ($this->request->is('post')) {
-            $user = $this->Users->patchEntity($user, $this->request->getData());
+        if ($this->request->is('post')) { //debug($this->request->getData()); exit;
+            $user = $this->Users->patchEntity($user, $this->request->getData()); //debug($user); exit;
             if ($this->Users->save($user)) {
                 $this->Flash->success(__('The user has been saved.'));
 
