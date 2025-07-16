@@ -1,0 +1,109 @@
+# services:
+#   web:
+#     build: .
+#     image: cakephp:5.0
+#     container_name: cakephp5_web
+#     working_dir: /var/www/html
+#     mem_limit: 512M
+#     mem_reservation: 256M
+#     volumes:
+#       - ./cakephp-app:/var/www/html
+#       - ./cakephp-app/tmp:/var/www/html/tmp
+#       - php_session_data:/tmp
+#     ports:
+#       - "8080:80"
+#     networks:
+#       - cakephp5_network
+#     depends_on:
+#       mariadb:
+#         condition: service_healthy
+#     environment:
+#       DATABASE_URL: "mysql://user:password@mariadb/cakephp"
+#       PHP_MEMORY_LIMIT: 256M
+#       PHP_UPLOAD_MAX_FILESIZE: 64M
+#       PHP_POST_MAX_SIZE: 64M
+#       TZ: "Asia/Manila"
+#     healthcheck:
+#       test: ["CMD", "curl", "-f", "http://localhost"]
+#       interval: 30s
+#       timeout: 10s
+#       retries: 3
+#     restart: unless-stopped
+
+#   mariadb:
+#     image: mariadb:10.11
+#     container_name: cakephp5_db
+#     mem_limit: 512M
+#     mem_reservation: 256M
+#     ports:
+#       - "127.0.0.1:3306:3306"
+#     environment:
+#       MYSQL_ROOT_PASSWORD: root
+#       MYSQL_USER: user
+#       MYSQL_PASSWORD: password
+#       MYSQL_DATABASE: cakephp
+#       TZ: "Asia/Manila"
+#     volumes:
+#       - db_data:/var/lib/mysql
+#       - db_config:/etc/mysql/conf.d
+#     networks:
+#       - cakephp5_network
+#     healthcheck:
+#       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+#       interval: 5s
+#       timeout: 10s
+#       retries: 5
+#     restart: unless-stopped
+
+#   phpmyadmin:
+#     image: phpmyadmin/phpmyadmin
+#     container_name: cakephp5_phpmyadmin
+#     mem_limit: 256M
+#     environment:
+#       PMA_HOST: mariadb
+#       PMA_USER: root
+#       PMA_PASSWORD: root
+#       TZ: "Asia/Manila"
+#     ports:
+#       - "8081:80"
+#     depends_on:
+#       - mariadb
+#     networks:
+#       - cakephp5_network
+#     restart: unless-stopped
+
+# networks:
+#   cakephp5_network:
+
+# volumes:
+#   db_data:
+#   db_config:
+#   php_session_data:
+
+
+# FROM php:8.3-apache
+
+# WORKDIR /var/www/html
+
+# RUN apt-get update && apt-get install -y \
+#     libpng-dev \
+#     libjpeg-dev \
+#     libfreetype6-dev \
+#     libzip-dev \
+#     zip \
+#     unzip \
+#     libonig-dev \
+#     libxml2-dev \
+#     && docker-php-ext-configure gd --with-freetype --with-jpeg \
+#     && docker-php-ext-install -j$(nproc) gd \
+#     pdo_mysql \
+#     mbstring \
+#     zip \
+#     intl \
+#     soap
+
+# RUN a2enmod rewrite
+
+# RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+# RUN rm -rf /var/www/html/* /var/www/html/.* 2>/dev/null || true
