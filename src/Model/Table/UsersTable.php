@@ -11,6 +11,8 @@ use Cake\Validation\Validator;
 /**
  * Users Model
  *
+ * @property \App\Model\Table\PersonalTokensTable&\Cake\ORM\Association\HasMany $PersonalTokens
+ *
  * @method \App\Model\Entity\User newEmptyEntity()
  * @method \App\Model\Entity\User newEntity(array $data, array $options = [])
  * @method array<\App\Model\Entity\User> newEntities(array $data, array $options = [])
@@ -37,12 +39,23 @@ class UsersTable extends Table
     {
         parent::initialize($config);
 
-        $this->setConnection('auth');
         $this->setTable('users');
-        $this->setDisplayField('name');
+        $this->setDisplayField('username');
         $this->setPrimaryKey('id');
-    }
 
+        $this->hasMany('PersonalTokens', [
+            'foreignKey' => 'user_id',
+        ]);
+
+        $this->addBehavior('Timestamp', [
+            'events' => [
+                'Model.beforeSave' => [
+                    'created_on' => 'new',
+                    'modified_on' => 'always',
+                ],
+            ],
+        ]);
+    }
     /**
      * Default validation rules.
      *
@@ -52,46 +65,56 @@ class UsersTable extends Table
     public function validationDefault(Validator $validator): Validator
     {
         $validator
-            ->scalar('name')
-            ->maxLength('name', 50)
-            ->allowEmptyString('name');
-
-        $validator
             ->scalar('fname')
-            ->maxLength('fname', 50)
+            ->maxLength('fname', 255)
             ->allowEmptyString('fname');
 
         $validator
             ->scalar('lname')
-            ->maxLength('lname', 50)
+            ->maxLength('lname', 255)
             ->allowEmptyString('lname');
 
         $validator
             ->scalar('username')
-            ->maxLength('username', 50)
-            ->allowEmptyString('username');
+            ->maxLength('username', 255)
+            ->requirePresence('username', 'create')
+            ->notEmptyString('username')
+            ->add('username', 'unique', ['rule' => 'validateUnique', 'provider' => 'table']);
+
+        $validator
+            ->email('email')
+            ->requirePresence('email', 'create')
+            ->notEmptyString('email')
+            ->add('email', 'unique', ['rule' => 'validateUnique', 'provider' => 'table']);
 
         $validator
             ->scalar('password')
             ->maxLength('password', 255)
-            ->allowEmptyString('password');
+            ->requirePresence('password', 'create')
+            ->notEmptyString('password');
 
         $validator
-            ->allowEmptyString('role');
+            ->requirePresence('role', 'create')
+            ->notEmptyString('role');
 
         $validator
             ->allowEmptyString('has_pic');
 
         $validator
-            ->allowEmptyString('is_active');
+            ->boolean('is_active')
+            ->notEmptyString('is_active');
 
         $validator
-            ->integer('created_by')
-            ->allowEmptyString('created_by');
+            ->dateTime('created_on')
+            ->notEmptyDateTime('created_on');
 
         $validator
-            ->date('created_on')
-            ->allowEmptyDate('created_on');
+            ->dateTime('modified_on')
+            ->notEmptyDateTime('modified_on');
+
+        $validator
+            ->dateTime('deleted_on')
+            ->allowEmptyDateTime('deleted_on');
 
         return $validator;
     }
@@ -106,6 +129,7 @@ class UsersTable extends Table
     public function buildRules(RulesChecker $rules): RulesChecker
     {
         $rules->add($rules->isUnique(['username']), ['errorField' => 'username']);
+        $rules->add($rules->isUnique(['email']), ['errorField' => 'email']);
 
         return $rules;
     }

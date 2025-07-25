@@ -6,24 +6,25 @@ namespace App\Model\Entity;
 use Cake\ORM\Entity;
 
 /**
- * User Entity
+ * Client Entity
  *
  * @property int $id
- * @property string|null $fname
- * @property string|null $lname
- * @property string $username
- * @property string $email
- * @property string $password
- * @property int $role
- * @property int|null $has_pic
+ * @property string $fname
+ * @property string|null $mname
+ * @property string $lname
+ * @property int $phone_number
+ * @property int|null $phone_number2
+ * @property int|null $is_new
+ * @property int|null $is_member
+ * @property int|null $is_vip
  * @property bool $is_active
+ * @property int|null $cnd_pts
+ * @property int|null $created_by
  * @property \Cake\I18n\DateTime $created_on
  * @property \Cake\I18n\DateTime $modified_on
  * @property \Cake\I18n\DateTime|null $deleted_on
- *
- * @property \App\Model\Entity\PersonalToken[] $personal_tokens
  */
-class User extends Entity
+class Client extends Entity
 {
     /**
      * Fields that can be mass assigned using newEntity() or patchEntity().
@@ -36,28 +37,18 @@ class User extends Entity
      */
     protected array $_accessible = [
         'fname' => true,
+        'mname' => true,
         'lname' => true,
-        'username' => true,
-        'email' => true,
-        'password' => true,
-        'role' => true,
-        'has_pic' => true,
+        'phone_number' => true,
+        'phone_number2' => true,
+        'is_new' => true,
+        'is_member' => true,
+        'is_vip' => true,
         'is_active' => true,
+        'cnd_pts' => true,
+        'created_by' => true,
         'created_on' => true,
         'modified_on' => true,
         'deleted_on' => true,
-        'personal_tokens' => true,
     ];
-
-    /**
-     * Fields that are excluded from JSON versions of the entity.
-     *
-     * @var list<string>
-     */
-    protected function _setPassword(string $password): ?string {
-    if (strlen($password) > 0) {
-        return password_hash($password, PASSWORD_ARGON2ID);
-        }
-        return null;
-    }
 }
