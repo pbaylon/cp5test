@@ -322,7 +322,7 @@ return [
         /*
          * The test connection is used during the test suite.
          */
-        'test' => [
+        'auth' => [
             'className' => Connection::class,
             'driver' => Mysql::class,
             'persistent' => false,

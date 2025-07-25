@@ -10,12 +10,6 @@ use Cake\Validation\Validator;
 
 class UsersTable extends Table
 {
-    /**
-     * Initialize method
-     *
-     * @param array<string, mixed> $config The configuration for the Table.
-     * @return void
-     */
     public function initialize(array $config): void
     {
         parent::initialize($config);
@@ -25,12 +19,11 @@ class UsersTable extends Table
         $this->setPrimaryKey('id');
     }
 
-    /**
-     * Default validation rules.
-     *
-     * @param \Cake\Validation\Validator $validator Validator instance.
-     * @return \Cake\Validation\Validator
-     */
+    public static function defaultConnectionName(): string
+    {
+        return 'auth';
+    }
+
     public function validationDefault(Validator $validator): Validator
     {
         $validator
