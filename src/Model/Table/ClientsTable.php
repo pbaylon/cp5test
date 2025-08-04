@@ -40,6 +40,18 @@ class ClientsTable extends Table
         $this->setTable('clients');
         $this->setDisplayField('fname');
         $this->setPrimaryKey('id');
+
+        $this->addBehavior('Timestamp', [
+            'events' => [
+                'Model.beforeSave' => [
+                    'created_on' => 'new',
+                    'modified_on' => 'always',
+                ],
+            ],
+        ]);
+        $this->hasMany('Pets', [
+            'foreignKey' => 'client_id',
+        ]);
     }
 
     /**
@@ -90,10 +102,6 @@ class ClientsTable extends Table
         $validator
             ->integer('cnd_pts')
             ->allowEmptyString('cnd_pts');
-
-        $validator
-            ->integer('created_by')
-            ->allowEmptyString('created_by');
 
         $validator
             ->dateTime('created_on')

@@ -79,8 +79,6 @@
                     'user_id' => $user->id
                 ]));
         }
-
-
         //Login user
        public function login()
         {
