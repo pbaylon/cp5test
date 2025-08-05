@@ -197,6 +197,35 @@ $routes->scope('/api', ['prefix' => 'Api'], function (RouteBuilder $builder) {
         '_namespace' => 'App\Controller\Api',
     ])->setPass(['id']);
 
+    // PetRecord routes
+    $builder->connect('/pet-records', [
+        'controller' => 'PetRecord',
+        'action' => 'index',
+        '_namespace' => 'App\Controller\Api',
+    ]);
+    $builder->connect('/pet-records/view/:id', [
+        'controller' => 'PetRecord',
+        'action' => 'view',
+        '_namespace' => 'App\Controller\Api',
+    ])->setPass(['id']);
+
+    $builder->connect('/pet-records/add', [
+        'controller' => 'PetRecord',
+        'action' => 'add',
+        '_namespace' => 'App\Controller\Api',
+    ]);
+    $builder->connect('/pet-records/edit/:id', [
+        'controller' => 'PetRecord',
+        'action' => 'edit',
+        '_namespace' => 'App\Controller\Api',
+    ])->setPass(['id'])->setPatterns(['id' => '\d+']);
+
+    $builder->connect('/pet-records/delete/:id', [
+        'controller' => 'PetRecord',
+        'action' => 'delete',
+        '_namespace' => 'App\Controller\Api',
+    ])->setPass(['id']);
+
     // Fallback routes for all controllers
     
     $builder->fallbacks(DashedRoute::class);
