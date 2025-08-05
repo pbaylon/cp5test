@@ -4,20 +4,19 @@ declare(strict_types=1);
 namespace App\Controller\Api;
 
 use App\Controller\AppController;
-use App\Model\Table\InstallationsTable;
+use App\Model\Table\PetsTable;
 use Cake\Datasource\Exception\RecordNotFoundException;
 
 /**
- * Installation Controller
+ * Pet Controller
  *
  */
-class InstallationController extends AppController
+class PetController extends AppController
 {
-    protected InstallationsTable $Installation;
-    public function initialize(): void
-    {
+    protected PetsTable $Pet;
+    public function initialize():void{
         parent::initialize();
-        $this->Installation = $this->fetchTable('Installations');
+        $this->Pet = $this->fetchTable('Pets');
     }
     /**
      * Index method
@@ -27,15 +26,14 @@ class InstallationController extends AppController
     public function index()
     {
         $this->disableAutoRender();
-        $query = $this->Installation->find()->where(['deleted_on IS' => null]);
-        $installation = $this->paginate($query);
+        $query = $this->Pet->find()->where(['deleted_on IS' => null]);
+        $pet = $this->paginate($query);
 
-       return $this->jsonResponse([
-        'status' => true,
-        'data' => $installation->toArray(),
-       ]);
+        return $this->jsonResponse([
+            'status' => true,
+            'data' => $pet->toArray(),
+        ]);
     }
-
     private function jsonResponse(array $data, int $status = 200): \Cake\Http\Response
     {
             return $this->response
@@ -47,27 +45,26 @@ class InstallationController extends AppController
     /**
      * View method
      *
-     * @param string|null $id Installation id.
+     * @param string|null $id Pet id.
      * @return \Cake\Http\Response|null|void Renders view
      * @throws \Cake\Datasource\Exception\RecordNotFoundException When record not found.
      */
     public function view($id = null)
     {
         $this->disableAutoRender();
-        $installation = $this->Installation->get($id);
+        $pet = $this->Pet->get($id);
 
-        if ($installation->deleted_on !== null) {
+        if($pet->deleted_on !== null){
             return $this->jsonResponse([
                 'status' => false,
-                'message' => 'Installation has been deleted.'
+                'message' => 'Pet not found or has been deleted.',
             ], 410);
         }
-
         return $this->jsonResponse([
             'status' => true,
-            'data' => $installation
+            'data' => $pet,
         ]);
-
+       
     }
 
     /**
@@ -78,83 +75,78 @@ class InstallationController extends AppController
     public function add()
     {
         $this->disableAutoRender();
-        $installation = $this->Installation->newEmptyEntity();
-
-          if ($this->request->is('post')) {
+        $pet = $this->Pet->newEmptyEntity();
+        
+        if($this-> request->is('post')) {
             $data = $this->request->getData();
+            $pet = $this->Pet->patchEntity($pet, $data);
 
-            $installation = $this->Installation->patchEntity($installation, $data);
-
-            if ($this->Installation->save($installation)) {
+            if($this->Pet->save($pet)) {
                 return $this->jsonResponse([
                     'status' => true,
-                    'message' => 'The installation has been saved.',
-                    'installation_id' => $installation->id
+                    'message' => 'Pet has been added successfully.',
+                    'pet_id' => $pet->id
                 ]);
             }
 
             return $this->jsonResponse([
                 'status' => false,
-                'message' => 'Failed to save installation.',
-                'errors' => $installation->getErrors()
+                'message' => 'Failed to add pet. Please try again.',
+                'errors' => $pet->getErrors()
             ], 400);
         }
-
         return $this->jsonResponse([
             'status' => false,
-            'message' => 'Method not allowed',
+            'message' => 'Invalid request method.',
         ], 405);
     }
 
     /**
      * Edit method
      *
-     * @param string|null $id Installation id.
+     * @param string|null $id Pet id.
      * @return \Cake\Http\Response|null|void Redirects on successful edit, renders view otherwise.
      * @throws \Cake\Datasource\Exception\RecordNotFoundException When record not found.
      */
     public function edit($id = null)
     {
-       $this->disableAutoRender();
-        $installation = $this->Installation->get($id);
+        $this->disableAutoRender();
+        $pet = $this->Pet->get($id);
 
-        if ($installation->deleted_on !== null) {
+        if ($pet->deleted_on !== null) {
             return $this->jsonResponse([
                 'status' => false,
-                'message' => 'Installation has been deleted.'
+                'message' => 'Pet has been deleted.'
             ], 410);
         }
-
         if ($this->request->is(['patch', 'post', 'put'])) {
             $data = $this->request->getData();
-            $installation = $this->Installation->patchEntity($installation, $data);
-            $installation->modified_on = new \DateTimeImmutable('now', new \DateTimeZone('Asia/Manila'));
+            $pet = $this->Pet->patchEntity($pet, $data);
+            $pet->modified_on = new \DateTimeImmutable('now', new \DateTimeZone('Asia/Manila'));
 
-            if ($this->Installation->save($installation)) {
+            if ($this->Pet->save($pet)) {
                 return $this->jsonResponse([
                     'status' => true,
-                    'message' => 'The installation has been updated.',
-                    'installation_id' => $installation->id
+                    'message' => 'The pet has been updated.',
+                    'pet_id' => $pet->id
                 ]);
             }
-
             return $this->jsonResponse([
                 'status' => false,
-                'message' => 'Failed to update installation.',
-                'errors' => $installation->getErrors()
+                'message' => 'The pet could not be updated. Please, try again.',
+                'errors' => $pet->getErrors()
             ], 400);
         }
-
         return $this->jsonResponse([
             'status' => false,
-            'message' => 'Method not allowed',
+            'message' => 'Invalid request method.',
         ], 405);
     }
 
     /**
      * Delete method
      *
-     * @param string|null $id Installation id.
+     * @param string|null $id Pet id.
      * @return \Cake\Http\Response|null Redirects to index.
      * @throws \Cake\Datasource\Exception\RecordNotFoundException When record not found.
      */
@@ -162,32 +154,36 @@ class InstallationController extends AppController
     {
         $this->disableAutoRender();
         $this->request->allowMethod(['post', 'delete']);
-
+        
         try{
-            $installation = $this->Installation->get($id);
-            $installation->deleted_on = new \DateTimeImmutable('now', new \DateTimeZone('Asia/Manila'));
-            
-            if ($installation->deleted_on) {
-                $installation->is_deleted = true;
+            $pet = $this->Pet->get($id);
+
+            $pet->deleted_on = new \DateTimeImmutable('now', new \DateTimeZone('Asia/Manila'));
+            if ($pet->deleted_on) {
+                $pet->is_deleted = true;
             }
-            if ($this->Installation->save($installation)) {
+
+            if($this->Pet->save($pet)) {
                 return $this->jsonResponse([
                     'status' => true,
-                    'message' => 'The installation has been deleted.',
+                    'message' => 'Pet has been deleted successfully.',
                 ]);
             }
             return $this->jsonResponse([
                 'status' => false,
-                'message' => 'Failed to delete the installation.'
+                'message' => 'Failed to delete pet. Please try again.',
+                'errors' => $pet->getErrors()
             ], 400);
-
-
-        }catch (RecordNotFoundException $error) {
+        }catch(RecordNotFoundException $error){
             return $this->jsonResponse([
                 'status' => false,
-                'message' => 'Installation not found',
+                'message' => 'Pet not found.',
                 'error' => $error->getMessage()
             ], 404);
         }
+        return $this->jsonResponse([
+            'status'=> false,
+            'message'=> 'Invalid method.',
+            ],405);
     }
 }

@@ -52,6 +52,9 @@ class ClientsTable extends Table
         $this->hasMany('Pets', [
             'foreignKey' => 'client_id',
         ]);
+        $this->hasMany('PetOwners', [
+            'foreignKey' => 'client_id',
+        ]);
     }
 
     /**

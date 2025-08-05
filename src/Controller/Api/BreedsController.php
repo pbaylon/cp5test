@@ -122,6 +122,7 @@ class BreedsController extends AppController
      if ($this->request->is(['patch', 'post', 'put'])) {
           $data = $this->request->getData();
           $breed = $this->Breeds->patchEntity($breed, $data);
+          $breed->modified_on = new \DateTimeImmutable('now', new \DateTimeZone('Asia/Manila'));
 
           if ($this->Breeds->save($breed)) {
               return $this->jsonResponse([
@@ -154,6 +155,9 @@ class BreedsController extends AppController
         $breed = $this->Breeds->get($id);
 
         $breed->deleted_on = new \DateTimeImmutable('now', new \DateTimeZone('Asia/Manila'));
+        if ($breed->deleted_on) {
+                $breed->is_deleted = true;
+            }
 
            if ($this->Breeds->save($breed)) {
                 return $this->jsonResponse([

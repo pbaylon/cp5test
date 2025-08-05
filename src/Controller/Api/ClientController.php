@@ -102,7 +102,7 @@ class ClientController extends AppController
 
         if ($this->request->is(['patch', 'post', 'put'])) {
             $client = $this->Client->patchEntity($client, $this->request->getData());
-
+            $client->modified_on = new \DateTimeImmutable('now', new \DateTimeZone('Asia/Manila'));
             if ($this->Client->save($client)) {
                 return $this->jsonResponse([
                     'status' => true,
