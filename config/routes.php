@@ -169,58 +169,58 @@ $routes->scope('/api', ['prefix' => 'Api'], function (RouteBuilder $builder) {
     ])->setPass(['id']);
 
     // PetOwner routes
-    $builder->connect('/pet-owners', [
+    $builder->connect('/petowners', [
         'controller' => 'PetOwner',
         'action' => 'index',
         '_namespace' => 'App\Controller\Api',
     ]);
-    $builder->connect('/pet-owners/view/:id', [
+    $builder->connect('/petowners/view/:id', [
         'controller' => 'PetOwner',
         'action' => 'view',
         '_namespace' => 'App\Controller\Api',
     ])->setPass(['id']);
 
-    $builder->connect('/pet-owners/add', [
+    $builder->connect('/petowners/add', [
         'controller' => 'PetOwner',
         'action' => 'add',
         '_namespace' => 'App\Controller\Api',
     ]);
-    $builder->connect('/pet-owners/edit/:id', [
+    $builder->connect('/petowners/edit/:id', [
         'controller' => 'PetOwner',
         'action' => 'edit',
         '_namespace' => 'App\Controller\Api',
     ])->setPass(['id'])->setPatterns(['id' => '\d+']);
 
-    $builder->connect('/pet-owners/delete/:id', [
+    $builder->connect('/petowners/delete/:id', [
         'controller' => 'PetOwner',
         'action' => 'delete',
         '_namespace' => 'App\Controller\Api',
     ])->setPass(['id']);
 
     // PetRecord routes
-    $builder->connect('/pet-records', [
+    $builder->connect('/petrecords', [
         'controller' => 'PetRecord',
         'action' => 'index',
         '_namespace' => 'App\Controller\Api',
     ]);
-    $builder->connect('/pet-records/view/:id', [
+    $builder->connect('/petrecords/view/:id', [
         'controller' => 'PetRecord',
         'action' => 'view',
         '_namespace' => 'App\Controller\Api',
     ])->setPass(['id']);
 
-    $builder->connect('/pet-records/add', [
+    $builder->connect('/petrecords/add', [
         'controller' => 'PetRecord',
         'action' => 'add',
         '_namespace' => 'App\Controller\Api',
     ]);
-    $builder->connect('/pet-records/edit/:id', [
+    $builder->connect('/petrecords/edit/:id', [
         'controller' => 'PetRecord',
         'action' => 'edit',
         '_namespace' => 'App\Controller\Api',
     ])->setPass(['id'])->setPatterns(['id' => '\d+']);
 
-    $builder->connect('/pet-records/delete/:id', [
+    $builder->connect('/petrecords/delete/:id', [
         'controller' => 'PetRecord',
         'action' => 'delete',
         '_namespace' => 'App\Controller\Api',
