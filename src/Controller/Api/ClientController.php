@@ -3,155 +3,57 @@ declare(strict_types=1);
 
 namespace App\Controller\Api;
 
-use App\Controller\AppController; 
-use Cake\Datasource\Exception\RecordNotFoundException;
+use Cake\Http\Response;
+use App\Controller\Api\BaseApiController;
 use App\Model\Table\ClientsTable;
-
-class ClientController extends AppController
+class ClientController extends BaseApiController
 {
-    protected ClientsTable $Client;
-
+    protected ClientsTable $Clients;
     public function initialize(): void
     {
         parent::initialize();
-        $this->Client = $this->fetchTable('Clients');
+        $this->Clients = $this->fetchTable('Clients');
+    }
+    public function index(): Response
+    {
+        $clients = $this->Clients->fetchAllActiveClients();
+        return $this->json($clients);
     }
 
-    public function index()
+    public function view($id): Response
     {
-        $this->disableAutoRender();
-        $query = $this->Client->find()->where(['deleted_on IS' => null]);
-        $client = $this->paginate($query);
-
-        return $this->jsonResponse([
-            'status' => true,
-            'data' => $client->toArray(),
-        ]);
+        $id = (int)$id;
+        $client = $this->Clients->fetchClientById($id);
+        return $this->json($client ? $client->jsonSerialize(): []);
     }
 
-    private function jsonResponse(array $data, int $status = 200): \Cake\Http\Response
+    public function add(): Response
     {
-        return $this->response
-            ->withStatus($status)
-            ->withType('application/json')
-            ->withStringBody(json_encode($data));
+        $this->request->allowMethod('post');
+
+        $data = $this->request->getData();
+        $result = $this->Clients->createClient($data);
+
+        return $this->json($result, $result['success'] ? 201 : 400);
     }
 
-    public function view($id = null)
+    public function edit($id): Response
     {
-        $this->disableAutoRender();
+        $this->request->allowMethod(['put', 'patch']);
 
-        $client = $this->Client->get($id);
+        $id = (int)$id;
+        $data = $this->request->getData();
+        $result = $this->Clients->updateClient($id, $data);
 
-        if ($client->deleted_on !== null) {
-            return $this->jsonResponse([
-                'status' => false,
-                'message' => 'Client has been deleted.'
-            ], 410);
-        }
-
-        return $this->jsonResponse([
-            'status' => true,
-            'data' => $client
-        ]);
+        return $this->json($result, $result['success'] ? 200 : 400);
     }
 
-    public function add()
+    public function delete($id): Response
     {
-        $this->disableAutoRender();
-        $client = $this->Client->newEmptyEntity();
+        $this->request->allowMethod('delete');
+        $id = (int)$id;
+        $result = $this->Clients->softDeleteClient($id);
 
-        if ($this->request->is('post')) {
-            $data = $this->request->getData();
-            $data['is_active'] = true;
-
-            $client = $this->Client->patchEntity($client, $data);
-
-            if ($this->Client->save($client)) {
-                return $this->jsonResponse([
-                    'status' => true,
-                    'message' => 'The client has been saved.',
-                    'client_id' => $client->id
-                ]);
-            }
-
-            return $this->jsonResponse([
-                'status' => false,
-                'message' => 'Failed to save client.',
-                'errors' => $client->getErrors()
-            ], 400);
-        }
-
-        return $this->jsonResponse([
-            'status' => false,
-            'message' => 'Method not allowed',
-        ], 405);
-    }
-
-    public function edit($id = null)
-    {
-        $this->disableAutoRender();
-        $client = $this->Client->get($id);
-
-        if ($client->deleted_on !== null) {
-            return $this->jsonResponse([
-                'status' => false,
-                'message' => 'Cannot edit a deleted client.'
-            ], 410);
-        }
-
-        if ($this->request->is(['patch', 'post', 'put'])) {
-            $client = $this->Client->patchEntity($client, $this->request->getData());
-            $client->modified_on = new \DateTimeImmutable('now', new \DateTimeZone('Asia/Manila'));
-            if ($this->Client->save($client)) {
-                return $this->jsonResponse([
-                    'status' => true,
-                    'message' => 'The client has been updated.',
-                    'client_id' => $client->id
-                ]);
-            }
-
-            return $this->jsonResponse([
-                'status' => false,
-                'message' => 'Failed to update client.',
-                'errors' => $client->getErrors()
-            ], 400);
-        }
-
-        return $this->jsonResponse([
-            'status' => false,
-            'message' => 'Method not allowed',
-        ], 405);
-    }
-
-    public function delete($id = null)
-    {
-        $this->disableAutoRender();
-        $this->request->allowMethod(['post', 'delete']);
-
-        try {
-            $client = $this->Client->get($id);
-
-            $client->deleted_on = new \DateTimeImmutable('now', new \DateTimeZone('Asia/Manila'));
-
-            if ($this->Client->save($client)) {
-                return $this->jsonResponse([
-                    'status' => true,
-                    'message' => 'The client has been deleted.',
-                ]);
-            }
-
-            return $this->jsonResponse([
-                'status' => false,
-                'message' => 'Failed to delete the client.'
-            ], 400);
-
-        } catch (RecordNotFoundException $error) {
-            return $this->jsonResponse([
-                'status' => false,
-                'message' => 'Client not found',
-                'error' => $error->getMessage()
-            ], 404);
-        }
+        return $this->json($result, $result['success'] ? 200 : 400);
     }
 }

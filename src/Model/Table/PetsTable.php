@@ -7,6 +7,10 @@ use Cake\ORM\Query\SelectQuery;
 use Cake\ORM\RulesChecker;
 use Cake\ORM\Table;
 use Cake\Validation\Validator;
+use Cake\Datasource\Exception\RecordNotFoundException;
+use Cake\Datasource\EntityInterface;
+use DateTimeImmutable;
+use DateTimeZone;
 
 /**
  * Pets Model
@@ -154,5 +158,119 @@ class PetsTable extends Table
         $rules->add($rules->existsIn(['breed_id'], 'Breeds'), ['errorField' => 'breed_id']);
 
         return $rules;
+    }
+    public function fetchAllActivePets(): array
+    {
+        return $this->find()
+            ->whereNull('deleted_on')
+            ->orderBy(['modified_on' => 'DESC'])
+            ->toArray();
+    }
+    //GET PETS BY ID (IF NOT DELETED)
+    public function fetchPetsById(int $id): ?EntityInterface
+    {
+        try {
+            $pet = $this->get($id);
+            return $pet->deleted_on === null ? $pet : null;
+        } catch (RecordNotFoundException) {
+            return null;
+        }
+    }
+
+    //CREATE PET
+    public function createPet(array $data): array
+    {
+        $data['is_active'] = true;
+
+        $pet = $this->newEmptyEntity();
+        $pet = $this->patchEntity($pet, $data);
+
+        if ($this->save($pet)) {
+            return [
+                'success' => true,
+                'message' => 'Pet created successfully.',
+                'pet' => $pet,
+            ];
+        }
+
+        return [
+            'success' => false,
+            'message' => 'Validation failed.',
+            'errors' => $pet->getErrors(),
+        ];
+    }
+
+    //UPDATE PET
+    public function updatePet(int $id, array $data): array
+    {
+        try {
+            $pet = $this->get($id);
+
+            if ($pet->deleted_on !== null) {
+                return [
+                    'success' => false,
+                    'message' => 'Pet is already deleted.'
+                ];
+            }
+
+            $pet = $this->patchEntity($pet, $data);
+            $pet->modified_on = (new DateTimeImmutable('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d H:i:s');
+
+            if ($this->save($pet)) {
+                return [
+                    'success' => true,
+                    'message' => 'Pet updated successfully.',
+                    'pet' => $pet,
+                ];
+            }
+
+            return [
+                'success' => false,
+                'message' => 'Validation failed.',
+                'errors' => $pet->getErrors(),
+            ];
+        } catch (RecordNotFoundException $error) {
+            return [
+                'success' => false,
+                'message' => 'Pet not found.',
+                'error'=> $error->getMessage(),
+            ];
+        }
+    }
+
+    //SOFT DELETE PET
+    public function softDeletePet(int $id): array
+    {
+        try {
+            $pet = $this->get($id);
+
+            if ($pet->deleted_on !== null) {
+                return [
+                    'success' => false,
+                    'message' => 'Pet already deleted.'
+                ];
+            }
+
+            $pet->deleted_on = (new DateTimeImmutable('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d H:i:s');
+
+            if ($this->save($pet)) {
+                return [
+                    'success' => true,
+                    'message' => 'Pet deleted successfully.',
+                    'pet' => $pet
+                ];
+            }
+
+            return [
+                'success' => false, 
+                'message' => 'Failed to delete pet.'
+            ];
+        } catch (RecordNotFoundException $error) {
+            return [
+                'success' => false,
+                'message' => 'Pet not found.',
+                'errors' => $error->getMessage(),
+            ];
+        }
     }
 }

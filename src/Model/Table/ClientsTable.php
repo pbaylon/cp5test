@@ -7,6 +7,10 @@ use Cake\ORM\Query\SelectQuery;
 use Cake\ORM\RulesChecker;
 use Cake\ORM\Table;
 use Cake\Validation\Validator;
+use Cake\Datasource\Exception\RecordNotFoundException;
+use Cake\Datasource\EntityInterface;
+use DateTimeImmutable;
+use DateTimeZone;
 
 /**
  * Clients Model
@@ -119,5 +123,120 @@ class ClientsTable extends Table
             ->allowEmptyDateTime('deleted_on');
 
         return $validator;
+    }
+       //GET ALL ACTIVE CLIENTS
+    public function fetchAllActiveClients(): array
+    {
+        return $this->find()
+            ->whereNull('deleted_on')
+            ->orderBy(['modified_on' => 'DESC'])
+            ->toArray();
+    }
+    //GET CLIENT BY ID (IF NOT DELETED)
+    public function fetchClientById(int $id): ?EntityInterface
+    {
+        try {
+            $client = $this->get($id);
+            return $client->deleted_on === null ? $client : null;
+        } catch (RecordNotFoundException) {
+            return null;
+        }
+    }
+
+    //CREATE CLIENT
+    public function createClient(array $data): array
+    {
+        $data['is_active'] = true;
+
+        $client = $this->newEmptyEntity();
+        $client = $this->patchEntity($client, $data);
+
+        if ($this->save($client)) {
+            return [
+                'success' => true,
+                'message' => 'Client created successfully.',
+                'client' => $client,
+            ];
+        }
+
+        return [
+            'success' => false,
+            'message' => 'Validation failed.',
+            'errors' => $client->getErrors(),
+        ];
+    }
+
+    //UPDATE CLIENT
+    public function updateClient(int $id, array $data): array
+    {
+        try {
+            $client = $this->get($id);
+
+            if ($client->deleted_on !== null) {
+                return [
+                    'success' => false,
+                    'message' => 'Client is already deleted.'
+                ];
+            }
+
+            $client = $this->patchEntity($client, $data);
+            $client->modified_on = (new DateTimeImmutable('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d H:i:s');
+
+            if ($this->save($client)) {
+                return [
+                    'success' => true,
+                    'message' => 'Client updated successfully.',
+                    'client' => $client,
+                ];
+            }
+
+            return [
+                'success' => false,
+                'message' => 'Validation failed.',
+                'errors' => $client->getErrors(),
+            ];
+        } catch (RecordNotFoundException $error) {
+            return [
+                'success' => false,
+                'message' => 'Client not found.',
+                'error'=> $error->getMessage(),
+            ];
+        }
+    }
+
+    //SOFT DELETE CLIENT
+    public function softDeleteClient(int $id): array
+    {
+        try {
+            $client = $this->get($id);
+
+            if ($client->deleted_on !== null) {
+                return [
+                    'success' => false,
+                    'message' => 'Client already deleted.'
+                ];
+            }
+
+            $client->deleted_on = (new DateTimeImmutable('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d H:i:s');
+
+            if ($this->save($client)) {
+                return [
+                    'success' => true,
+                    'message' => 'Client deleted successfully.',
+                    'client' => $client
+                ];
+            }
+
+            return [
+                'success' => false, 
+                'message' => 'Failed to delete client.'
+            ];
+        } catch (RecordNotFoundException $error) {
+            return [
+                'success' => false,
+                'message' => 'Client not found.',
+                'errors' => $error->getMessage(),
+            ];
+        }
     }
 }

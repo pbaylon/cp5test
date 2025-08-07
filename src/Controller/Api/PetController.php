@@ -3,15 +3,15 @@ declare(strict_types=1);
 
 namespace App\Controller\Api;
 
-use App\Controller\AppController;
+use App\Controller\Api\BaseApiController;
 use App\Model\Table\PetsTable;
-use Cake\Datasource\Exception\RecordNotFoundException;
+use Cake\Http\Response;
 
 /**
  * Pet Controller
  *
  */
-class PetController extends AppController
+class PetController extends BaseApiController
 {
     protected PetsTable $Pet;
     public function initialize():void{
@@ -25,21 +25,8 @@ class PetController extends AppController
      */
     public function index()
     {
-        $this->disableAutoRender();
-        $query = $this->Pet->find()->where(['deleted_on IS' => null]);
-        $pet = $this->paginate($query);
-
-        return $this->jsonResponse([
-            'status' => true,
-            'data' => $pet->toArray(),
-        ]);
-    }
-    private function jsonResponse(array $data, int $status = 200): \Cake\Http\Response
-    {
-            return $this->response
-            ->withStatus($status)
-            ->withType('application/json')
-            ->withStringBody(json_encode($data));
+        $pet = $this->Pet->fetchAllActivePets();
+        return $this->json($pet);
     }
 
     /**
@@ -49,22 +36,11 @@ class PetController extends AppController
      * @return \Cake\Http\Response|null|void Renders view
      * @throws \Cake\Datasource\Exception\RecordNotFoundException When record not found.
      */
-    public function view($id = null)
+    public function view($id): Response
     {
-        $this->disableAutoRender();
-        $pet = $this->Pet->get($id);
-
-        if($pet->deleted_on !== null){
-            return $this->jsonResponse([
-                'status' => false,
-                'message' => 'Pet not found or has been deleted.',
-            ], 410);
-        }
-        return $this->jsonResponse([
-            'status' => true,
-            'data' => $pet,
-        ]);
-       
+        $id = (int)$id;
+        $pet = $this->Pet->fetchPetsById($id);
+        return $this->json($pet ? $pet->jsonSerialize(): []);
     }
 
     /**
@@ -74,31 +50,12 @@ class PetController extends AppController
      */
     public function add()
     {
-        $this->disableAutoRender();
-        $pet = $this->Pet->newEmptyEntity();
-        
-        if($this-> request->is('post')) {
-            $data = $this->request->getData();
-            $pet = $this->Pet->patchEntity($pet, $data);
+        $this->request->allowMethod('post');
 
-            if($this->Pet->save($pet)) {
-                return $this->jsonResponse([
-                    'status' => true,
-                    'message' => 'Pet has been added successfully.',
-                    'pet_id' => $pet->id
-                ]);
-            }
+       $data = $this->request->getData();
+       $result = $this->Pet->createPet($data);
 
-            return $this->jsonResponse([
-                'status' => false,
-                'message' => 'Failed to add pet. Please try again.',
-                'errors' => $pet->getErrors()
-            ], 400);
-        }
-        return $this->jsonResponse([
-            'status' => false,
-            'message' => 'Invalid request method.',
-        ], 405);
+       return $this->json($result, $result['success'] ? 201 : 400);
     }
 
     /**
@@ -108,39 +65,15 @@ class PetController extends AppController
      * @return \Cake\Http\Response|null|void Redirects on successful edit, renders view otherwise.
      * @throws \Cake\Datasource\Exception\RecordNotFoundException When record not found.
      */
-    public function edit($id = null)
+    public function edit($id)
     {
-        $this->disableAutoRender();
-        $pet = $this->Pet->get($id);
+       $this->request->allowMethod('put', 'patch');
+      
+      $id = (int)$id;
+      $data = $this->request->getData();
+      $result = $this->Pet->updatePet($id, $data);
 
-        if ($pet->deleted_on !== null) {
-            return $this->jsonResponse([
-                'status' => false,
-                'message' => 'Pet has been deleted.'
-            ], 410);
-        }
-        if ($this->request->is(['patch', 'post', 'put'])) {
-            $data = $this->request->getData();
-            $pet = $this->Pet->patchEntity($pet, $data);
-            $pet->modified_on = new \DateTimeImmutable('now', new \DateTimeZone('Asia/Manila'));
-
-            if ($this->Pet->save($pet)) {
-                return $this->jsonResponse([
-                    'status' => true,
-                    'message' => 'The pet has been updated.',
-                    'pet_id' => $pet->id
-                ]);
-            }
-            return $this->jsonResponse([
-                'status' => false,
-                'message' => 'The pet could not be updated. Please, try again.',
-                'errors' => $pet->getErrors()
-            ], 400);
-        }
-        return $this->jsonResponse([
-            'status' => false,
-            'message' => 'Invalid request method.',
-        ], 405);
+      return $this->json($result, $result['success'] ? 200 : 400);
     }
 
     /**
@@ -150,40 +83,12 @@ class PetController extends AppController
      * @return \Cake\Http\Response|null Redirects to index.
      * @throws \Cake\Datasource\Exception\RecordNotFoundException When record not found.
      */
-    public function delete($id = null)
+    public function delete($id)
     {
-        $this->disableAutoRender();
-        $this->request->allowMethod(['post', 'delete']);
-        
-        try{
-            $pet = $this->Pet->get($id);
+       $this->request->allowMethod('delete');
+        $id = (int)$id;
+        $result = $this->Pet->softDeletePet($id);
 
-            $pet->deleted_on = new \DateTimeImmutable('now', new \DateTimeZone('Asia/Manila'));
-            if ($pet->deleted_on) {
-                $pet->is_deleted = true;
-            }
-
-            if($this->Pet->save($pet)) {
-                return $this->jsonResponse([
-                    'status' => true,
-                    'message' => 'Pet has been deleted successfully.',
-                ]);
-            }
-            return $this->jsonResponse([
-                'status' => false,
-                'message' => 'Failed to delete pet. Please try again.',
-                'errors' => $pet->getErrors()
-            ], 400);
-        }catch(RecordNotFoundException $error){
-            return $this->jsonResponse([
-                'status' => false,
-                'message' => 'Pet not found.',
-                'error' => $error->getMessage()
-            ], 404);
-        }
-        return $this->jsonResponse([
-            'status'=> false,
-            'message'=> 'Invalid method.',
-            ],405);
+        return $this->json($result, $result['success'] ? 200 : 400);
     }
 }

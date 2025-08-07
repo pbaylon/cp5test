@@ -3,16 +3,16 @@ declare(strict_types=1);
 
 namespace App\Controller\Api;
 
-use App\Controller\AppController;
+use Cake\Http\Response;
+use App\Controller\Api\BaseApiController;
 use App\Model\Table\BreedsTable;
-use Cake\Datasource\Exception\RecordNotFoundException;
 
 /**
  * Breeds Controller
  *
  * @property \App\Model\Table\BreedsTable $Breeds
  */
-class BreedsController extends AppController
+class BreedsController extends BaseApiController
 {
     protected BreedsTable $Breeds;
     public function initialize(): void
@@ -27,23 +27,9 @@ class BreedsController extends AppController
      */
     public function index()
     {
-        $this->disableAutoRender();
-        $query = $this->Breeds->find()->where(['deleted_on IS' => null]);
-        $breeds = $this->paginate($query);
-
-        return $this->jsonResponse([
-            'status' => true,
-            'data' => $breeds->toArray(),
-        ]);
+        $breed = $this->Breeds->fetchAllActiveBreeds();
+        return $this->json($breed);
     }
-    private function jsonResponse(array $data, int $status = 200): \Cake\Http\Response
-    {
-        return $this->response
-            ->withStatus($status)
-            ->withType('application/json')
-            ->withStringBody(json_encode($data));
-    }
-
     /**
      * View method
      *
@@ -51,22 +37,11 @@ class BreedsController extends AppController
      * @return \Cake\Http\Response|null|void Renders view
      * @throws \Cake\Datasource\Exception\RecordNotFoundException When record not found.
      */
-    public function view($id = null)
+    public function view($id): Response
     {
-        $this->disableAutoRender();
-        $breed = $this->Breeds->get($id);
-        
-        
-        if ($breed->deleted_on !== null) {
-            return $this->jsonResponse([
-                'status' => false,
-                'message' => 'Breed has been deleted.'
-            ], 410);
-        }
-        return $this->jsonResponse([
-            'status' => true,
-            'data' => $breed
-        ]);
+        $id = (int)$id;
+        $breed = $this->Breeds->fetchBreedById($id);
+        return $this->json($breed ? $breed->jsonSerialize(): []);
     }
 
     /**
@@ -76,28 +51,12 @@ class BreedsController extends AppController
      */
     public function add()
     {
-        $this->disableAutoRender();
-        $breed = $this->Breeds->newEmptyEntity();
+       $this->request->allowMethod('post');
 
-        if($this->request->is('post')) {
-            $data = $this->request->getData();
-            $data['is_active'] = true; // Set default active status
+       $data = $this->request->getData();
+       $result = $this->Breeds->createBreed($data);
 
-            $breed = $this->Breeds->patchEntity($breed, $data);
-
-            if ($this->Breeds->save($breed)) {
-                return $this->jsonResponse([
-                    'status' => true,
-                    'message' => 'The breed has been saved.',
-                    'breed_id' => $breed->id
-                ]);
-            }
-            return $this->jsonResponse([
-                'status' => false,
-                'message'=> 'The breed could not be saved. Please, try again.',
-                'errors' => $breed->getErrors()
-            ], 400);
-        }
+       return $this->json($result, $result['success'] ? 201 : 400);
     }
 
     /**
@@ -107,36 +66,16 @@ class BreedsController extends AppController
      * @return \Cake\Http\Response|null|void Redirects on successful edit, renders view otherwise.
      * @throws \Cake\Datasource\Exception\RecordNotFoundException When record not found.
      */
-    public function edit($id = null)
+    public function edit($id)
     {
-      $this->disableAutoRender();
-      $breed = $this->Breeds->get($id);
+      $this->request->allowMethod('put', 'patch');
+      
+      $id = (int)$id;
+      $data = $this->request->getData();
+      $result = $this->Breeds->updateBreed($id, $data);
 
-      if($breed->deleted_on !== null) {
-          return $this->jsonResponse([
-              'status' => false,
-              'message' => 'Breed has been deleted.'
-          ], 410);
-      }
+      return $this->json($result, $result['success'] ? 200 : 400);
 
-     if ($this->request->is(['patch', 'post', 'put'])) {
-          $data = $this->request->getData();
-          $breed = $this->Breeds->patchEntity($breed, $data);
-          $breed->modified_on = new \DateTimeImmutable('now', new \DateTimeZone('Asia/Manila'));
-
-          if ($this->Breeds->save($breed)) {
-              return $this->jsonResponse([
-                  'status' => true,
-                  'message' => 'The breed has been updated.',
-                  'breed_id' => $breed->id
-              ]);
-          }
-          return $this->jsonResponse([
-              'status' => false,
-              'message' => 'The breed could not be updated. Please, try again.',
-              'errors' => $breed->getErrors()
-          ], 400);
-      }
     }
 
     /**
@@ -146,37 +85,12 @@ class BreedsController extends AppController
      * @return \Cake\Http\Response|null Redirects to index.
      * @throws \Cake\Datasource\Exception\RecordNotFoundException When record not found.
      */
-    public function delete($id = null)
+    public function delete($id): Response
     {
-        $this->disableAutoRender();
-        $this->request->allowMethod(['post', 'delete']);
+        $this->request->allowMethod('delete');
+        $id = (int)$id;
+        $result = $this->Breeds->softDeleteBreed($id);
 
-      try{
-        $breed = $this->Breeds->get($id);
-
-        $breed->deleted_on = new \DateTimeImmutable('now', new \DateTimeZone('Asia/Manila'));
-        if ($breed->deleted_on) {
-                $breed->is_deleted = true;
-            }
-
-           if ($this->Breeds->save($breed)) {
-                return $this->jsonResponse([
-                    'status' => true,
-                    'message' => 'The breed has been deleted.',
-                ]);
-            }
-
-            return $this->jsonResponse([
-                'status' => false,
-                'message' => 'Failed to delete the breed.'
-            ], 400);
-
-      }catch (RecordNotFoundException $error) {
-          return $this->jsonResponse([
-              'status' => false,
-              'message' => 'Breed not found',
-              'errors'=> $error->getMessage()
-          ], 404);
-      }
+        return $this->json($result, $result['success'] ? 200 : 400);
     }
 }
