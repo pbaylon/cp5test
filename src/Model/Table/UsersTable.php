@@ -7,6 +7,7 @@ use Cake\ORM\Query\SelectQuery;
 use Cake\ORM\RulesChecker;
 use Cake\ORM\Table;
 use Cake\Validation\Validator;
+use App\Model\Entity\User;
 
 /**
  * Users Model
@@ -132,5 +133,64 @@ class UsersTable extends Table
         $rules->add($rules->isUnique(['email']), ['errorField' => 'email']);
 
         return $rules;
+    }
+
+      public function registerUser(array $data): array
+    {
+        $data['username'] = strtolower(trim($data['username']));
+        $data['email'] = strtolower(trim($data['email']));
+        $data['password'] = password_hash(trim($data['password']), PASSWORD_DEFAULT);
+        $data['is_active'] = true;
+
+        $user = $this->newEmptyEntity();
+        $user = $this->patchEntity($user, $data);
+
+        if ($user->hasErrors() || !$this->save($user)) {
+            return [
+                'status' => false,
+                'message' => 'Failed to register user.',
+                'errors' => $user->getErrors()
+            ];
+        }
+
+        return [
+            'status' => true,
+            'user' => $user
+        ];
+    }
+
+    public function authenticateUser(string $username, string $password): ?User
+    {
+        $user = $this->find()
+            ->where(['username' => $username])
+            ->first();
+
+        if (!$user || !password_verify($password, $user->password)) {
+            return null;
+        }
+
+        if (!$user->is_active) {
+            $user->is_active = true;
+            $this->save($user);
+        }
+
+        return $user;
+    }
+
+    public function logoutUser(User $user, string $plainToken): void
+    {
+        $user->is_active = false;
+        $this->save($user);
+
+        $tokens = $this->getAssociation('PersonalTokens')->getTarget();
+        $tokens->revokeToken($plainToken, $user->id);
+    }
+
+    public function getUserProfile(int $userId): ?User
+    {
+        return $this->find()
+            ->select(['id', 'username', 'email', 'fname', 'lname', 'role', 'has_pic'])
+            ->where(['id' => $userId])
+            ->first();
     }
 }
