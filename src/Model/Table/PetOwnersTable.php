@@ -7,6 +7,10 @@ use Cake\ORM\Query\SelectQuery;
 use Cake\ORM\RulesChecker;
 use Cake\ORM\Table;
 use Cake\Validation\Validator;
+use Cake\Datasource\Exception\RecordNotFoundException;
+use Cake\Datasource\EntityInterface;
+use DateTimeImmutable;
+use DateTimeZone;
 
 /**
  * PetOwners Model
@@ -60,6 +64,7 @@ class PetOwnersTable extends Table
                 ],
             ],
         ]);
+        
     }
 
     /**
@@ -122,5 +127,115 @@ class PetOwnersTable extends Table
         $rules->add($rules->existsIn(['client_id'], 'Clients'), ['errorField' => 'client_id']);
 
         return $rules;
+    }
+
+    public function fetchAllActivePetOwners(): array
+    {
+        return $this->find()
+        ->whereNull('deleted_on')
+        ->orderBy(['modified_on' => 'DESC'])
+        ->toArray();
+    }
+    public function fetchPetOwnerById(int $id): ?EntityInterface
+    {
+        try {
+            $petOwner = $this->get($id);
+            return $petOwner->deleted_on === null ? $petOwner : null;
+        } catch (RecordNotFoundException) {
+            return null;
+        }
+    }
+    public function createPetOwner(array $data): array
+    {
+        $data['is_active'] = true;
+        $petOwner = $this->newEntity($data);
+        $petOwner = $this->patchEntity($petOwner, $data);
+
+        if ($this->save($petOwner)) {
+            return [
+                'success' => true,
+                'message' => 'Pet owner created successfully.',
+                'data' => $petOwner
+            ];
+        }
+
+        return [
+            'success' => false,
+            'message' => 'Failed to create pet owner.',
+            'errors' => $petOwner->getErrors()
+        ];
+    }
+    public function updatePetOwner(int $id, array $data): array
+    {
+        try {
+            $petOwner = $this->get($id);
+
+            if ($petOwner->deleted_on !== null) {
+                return [
+                    'success' => false,
+                    'message' => 'Cannot update a deleted pet owner.',
+                ];
+            }
+
+            $petOwner = $this->patchEntity($petOwner, $data);
+            $petOwner->modified_on = (new DateTimeImmutable('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d H:i:s');
+
+            if ($this->save($petOwner)) {
+                return [
+                    'success' => true,
+                    'message' => 'Pet owner updated successfully.',
+                    'data' => $petOwner
+                ];
+            }
+
+            return [
+                'success' => false,
+                'message' => 'Failed to update pet owner.',
+                'errors' => $petOwner->getErrors()
+            ];
+
+        } catch (RecordNotFoundException $error) {
+            return [
+                'success' => false,
+                'message' => 'Pet owner not found.',
+                'error' => $error->getMessage()
+            ];
+        }
+    }
+    public function softDeletePetOwner(int $id): array
+    {
+        try {
+            $petOwner = $this->get($id);
+
+            if ($petOwner->deleted_on !== null) {
+                return [
+                    'success' => false,
+                    'message' => 'Pet owner already deleted.'
+                ];
+            }
+
+            $petOwner->deleted_on = (new DateTimeImmutable('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d H:i:s');
+            $petOwner->is_deleted = true;
+
+            if ($this->save($petOwner)) {
+                return [
+                    'success' => true,
+                    'message' => 'Pet owner deleted successfully.',
+                    'data' => $petOwner
+                ];
+            }
+
+            return [
+                'success' => false,
+                'message' => 'Failed to delete pet owner.',
+                'errors' => $petOwner->getErrors()
+            ];
+        } catch(RecordNotFoundException $error) {
+            return [
+                'success' => false,
+                'message' => 'Pet owner not found.',
+                'error' => $error->getMessage()
+            ];
+        }
     }
 }

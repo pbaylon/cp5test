@@ -17,7 +17,6 @@ use DateTimeZone;
  *
  * @property \App\Model\Table\ClientsTable&\Cake\ORM\Association\BelongsTo $Clients
  * @property \App\Model\Table\BreedsTable&\Cake\ORM\Association\BelongsTo $Breeds
- * @property \App\Model\Table\PetOwnersTable&\Cake\ORM\Association\HasMany $PetOwners
  *
  * @method \App\Model\Entity\Pet newEmptyEntity()
  * @method \App\Model\Entity\Pet newEntity(array $data, array $options = [])
@@ -57,6 +56,7 @@ class PetsTable extends Table
             'foreignKey' => 'breed_id',
             'joinType' => 'INNER',
         ]);
+        
         $this->hasMany('PetOwners', [
             'foreignKey' => 'pet_id',
         ]);
@@ -159,6 +159,7 @@ class PetsTable extends Table
 
         return $rules;
     }
+
     public function fetchAllActivePets(): array
     {
         return $this->find()

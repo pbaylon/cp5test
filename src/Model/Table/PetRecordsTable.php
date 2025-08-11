@@ -7,6 +7,10 @@ use Cake\ORM\Query\SelectQuery;
 use Cake\ORM\RulesChecker;
 use Cake\ORM\Table;
 use Cake\Validation\Validator;
+use Cake\Datasource\Exception\RecordNotFoundException;
+use Cake\Datasource\EntityInterface;
+use DateTimeImmutable;
+use DateTimeZone;
 
 /**
  * PetRecords Model
@@ -46,6 +50,14 @@ class PetRecordsTable extends Table
         $this->belongsTo('Pets', [
             'foreignKey' => 'pet_id',
             'joinType' => 'INNER',
+        ]);
+        $this->addBehavior('Timestamp', [
+            'events' => [
+                'Model.beforeSave' => [
+                    'created_on' => 'new',
+                    'modified_on' => 'always',
+                ],
+            ],
         ]);
     }
 
@@ -122,5 +134,115 @@ class PetRecordsTable extends Table
         $rules->add($rules->existsIn(['pet_id'], 'Pets'), ['errorField' => 'pet_id']);
 
         return $rules;
+    }
+
+      public function fetchAllActivePetRecords(): array
+    {
+        return $this->find()
+        ->whereNull('deleted_on')
+        ->orderBy(['modified_on' => 'DESC'])
+        ->toArray();
+    }
+    public function fetchPetRecordById(int $id): ?EntityInterface
+    {
+        try {
+            $petRecord = $this->get($id);
+            return $petRecord->deleted_on === null ? $petRecord : null;
+        } catch (RecordNotFoundException) {
+            return null;
+        }
+    }
+    public function createPetRecord(array $data): array
+    {
+        $data['is_active'] = true;
+        $petRecord = $this->newEntity($data);
+        $petRecord = $this->patchEntity($petRecord, $data);
+
+        if ($this->save($petRecord)) {
+            return [
+                'success' => true,
+                'message' => 'Pet Record created successfully.',
+                'data' => $petRecord
+            ];
+        }
+
+        return [
+            'success' => false,
+            'message' => 'Failed to create Pet Record.',
+            'errors' => $petRecord->getErrors()
+        ];
+    }
+    public function updatePetRecord(int $id, array $data): array
+    {
+        try {
+            $petRecord = $this->get($id);
+
+            if ($petRecord->deleted_on !== null) {
+                return [
+                    'success' => false,
+                    'message' => 'Cannot update a deleted Pet Record.',
+                ];
+            }
+
+            $petRecord = $this->patchEntity($petRecord, $data);
+            $petRecord->modified_on = (new DateTimeImmutable('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d H:i:s');
+
+            if ($this->save($petRecord)) {
+                return [
+                    'success' => true,
+                    'message' => 'Pet Record updated successfully.',
+                    'data' => $petRecord
+                ];
+            }
+
+            return [
+                'success' => false,
+                'message' => 'Failed to update Pet Record.',
+                'errors' => $petRecord->getErrors()
+            ];
+
+        } catch (RecordNotFoundException $error) {
+            return [
+                'success' => false,
+                'message' => 'Pet Record not found.',
+                'error' => $error->getMessage()
+            ];
+        }
+    }
+    public function softDeletePetRecord(int $id): array
+    {
+        try {
+            $petRecord = $this->get($id);
+
+            if ($petRecord->deleted_on !== null) {
+                return [
+                    'success' => false,
+                    'message' => 'Pet Record already deleted.'
+                ];
+            }
+
+            $petRecord->deleted_on = (new DateTimeImmutable('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d H:i:s');
+            $petRecord->is_deleted = true;
+
+            if ($this->save($petRecord)) {
+                return [
+                    'success' => true,
+                    'message' => 'Pet Record deleted successfully.',
+                    'data' => $petRecord
+                ];
+            }
+
+            return [
+                'success' => false,
+                'message' => 'Failed to delete pet Record.',
+                'errors' => $petRecord->getErrors()
+            ];
+        } catch(RecordNotFoundException $error) {
+            return [
+                'success' => false,
+                'message' => 'Pet Record not found.',
+                'error' => $error->getMessage()
+            ];
+        }
     }
 }

@@ -6,6 +6,7 @@ namespace App\Controller\Api;
 use Cake\Http\Response;
 use App\Controller\Api\BaseApiController;
 use App\Model\Table\ClientsTable;
+
 class ClientController extends BaseApiController
 {
     protected ClientsTable $Clients;
